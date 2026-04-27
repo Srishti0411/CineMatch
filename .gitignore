@@ -9,8 +9,7 @@ venv/
 .venv/
 
 # Data & Models (too large for git)
-data/
-models/
+models/similarity.npy
 
 # Jupyter
 .ipynb_checkpoints/

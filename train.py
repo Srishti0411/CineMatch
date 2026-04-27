@@ -144,11 +144,22 @@ def save_artifacts(df, similarity):
 # ─────────────────────────────────────────────
 # 5. MAIN
 # ─────────────────────────────────────────────
-
 if __name__ == "__main__":
     print("\n🎬 Movie Recommender — Training Pipeline\n" + "─" * 40)
-    movies, credits = load_data()
-    df = preprocess(movies, credits)
-    similarity = build_content_model(df)
-    save_artifacts(df, similarity)
+    similarity_path = os.path.join(MODEL_DIR, "similarity.npy")
+
+    if os.path.exists(similarity_path):
+        print("✅ similarity.npy already exists, skipping rebuild")
+        movies_path = os.path.join(MODEL_DIR, "movies.pkl")
+        if not os.path.exists(movies_path):
+            movies, credits = load_data()
+            df = preprocess(movies, credits)
+            similarity = np.load(similarity_path)
+            save_artifacts(df, similarity)
+    else:
+        movies, credits = load_data()
+        df = preprocess(movies, credits)
+        similarity = build_content_model(df)
+        save_artifacts(df, similarity)
+
     print("\n🎉 All done! You can now run the Flask app:\n   cd app && python app.py\n")
