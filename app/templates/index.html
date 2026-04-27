@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineMatch — Movie Recommender</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --card: #1a1a24;
+      --border: rgba(255,255,255,0.07);
+      --accent: #e8b84b;
+      --accent2: #e05c5c;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(10,10,15,0.92);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: var(--accent);
+    }
+    .logo span { color: var(--text); }
+
+    /* ── HERO / SEARCH ── */
+    .hero {
+      padding: 80px 48px 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(232,184,75,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3rem, 8vw, 6rem);
+      letter-spacing: 4px;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .hero h1 em { color: var(--accent); font-style: normal; }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.1rem;
+      margin-bottom: 48px;
+      font-weight: 300;
+    }
+
+    /* ── SEARCH BOX ── */
+    .search-wrap {
+      max-width: 620px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 18px 140px 18px 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      color: var(--text);
+      font-size: 1rem;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap input::placeholder { color: var(--muted); }
+
+    .search-wrap button {
+      position: absolute;
+      right: 6px; top: 6px;
+      padding: 12px 28px;
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: 50px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .search-wrap button:hover { opacity: 0.85; }
+
+    /* Autocomplete */
+    #autocomplete {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0; right: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      z-index: 200;
+      display: none;
+    }
+    #autocomplete.show { display: block; }
+    .ac-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: background 0.15s;
+    }
+    .ac-item:hover { background: rgba(232,184,75,0.1); color: var(--accent); }
+
+    /* ── GENRE PILLS ── */
+    .genre-section { padding: 0 48px 48px; text-align: center; }
+    .genre-pills { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 16px; }
+    .pill {
+      padding: 7px 18px;
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .pill:hover, .pill.active { border-color: var(--accent); color: var(--accent); background: rgba(232,184,75,0.08); }
+
+    /* ── SECTION ── */
+    .section { padding: 0 48px 60px; }
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 2px;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── GRID ── */
+    .movies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 20px;
+    }
+
+    .movie-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+    .movie-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(232,184,75,0.4);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    .movie-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      background: var(--surface);
+    }
+
+    .no-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+    }
+
+    .movie-info {
+      padding: 14px;
+    }
+    .movie-title {
+      font-size: 0.88rem;
+      font-weight: 500;
+      line-height: 1.3;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .movie-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .movie-rating {
+      color: var(--accent);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .match-badge {
+      position: absolute;
+      top: 10px; right: 10px;
+      background: var(--accent);
+      color: #0a0a0f;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 50px;
+    }
+
+    /* ── RESULTS PANEL ── */
+    #results-section { display: none; padding: 0 48px 60px; }
+    #results-section.show { display: block; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .results-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+    }
+    .results-label span { color: var(--accent); }
+    .clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 8px 16px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .clear-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    /* ── LOADING / ERROR ── */
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+    .loading::after {
+      content: '';
+      display: block;
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      margin: 20px auto 0;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      text-align: center;
+      padding: 40px;
+      color: var(--accent2);
+      background: rgba(224,92,92,0.07);
+      border-radius: var(--radius);
+      border: 1px solid rgba(224,92,92,0.2);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 32px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      header, .hero, .section, .genre-section, #results-section { padding-left: 20px; padding-right: 20px; }
+      .hero { padding-top: 48px; padding-bottom: 40px; }
+      .movies-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Cine<span>Match</span></div>
+  <div style="color: var(--muted); font-size: 0.85rem;">Powered by ML · TMDB</div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <h1>Find Your Next<br/><em>Favourite Film</em></h1>
+  <p>Content-based recommendations powered by machine learning</p>
+
+  <div class="search-wrap">
+    <input id="search-input" type="text" placeholder="Search a movie you love..." autocomplete="off" />
+    <button onclick="getRecommendations()">Recommend</button>
+    <div id="autocomplete"></div>
+  </div>
+</section>
+
+<!-- GENRE FILTER -->
+<section class="genre-section">
+  <div class="genre-pills" id="genre-pills">
+    {% for genre in genres[:18] %}
+    <span class="pill" onclick="filterGenre('{{ genre }}', this)">{{ genre }}</span>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results-section">
+  <div class="results-header">
+    <div class="results-label">Because you liked <span id="query-label"></span></div>
+    <button class="clear-btn" onclick="clearResults()">✕ Clear</button>
+  </div>
+  <div id="results-grid" class="movies-grid"></div>
+</section>
+
+<!-- TOP RATED -->
+<section class="section">
+  <div class="section-title" id="top-section-title">Top Rated</div>
+  <div id="top-grid" class="movies-grid">
+    {% for movie in top_movies %}
+    <div class="movie-card" onclick="getRecommendations('{{ movie.title }}')">
+      {% if movie.poster_url %}
+        <img class="movie-poster" src="{{ movie.poster_url }}" alt="{{ movie.title }}" loading="lazy"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="no-poster" style="display:none;">🎬</div>
+      {% else %}
+        <div class="no-poster">🎬</div>
+      {% endif %}
+      <div class="movie-info">
+        <div class="movie-title">{{ movie.title }}</div>
+        <div class="movie-meta">
+          <span>{{ movie.release_year }}</span>
+          <span class="movie-rating">★ {{ movie.vote_average }}</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<footer>
+  Built with Flask · scikit-learn · TMDB Dataset ·
+  <a href="https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata" target="_blank">Dataset</a>
+</footer>
+
+<script>
+  const input = document.getElementById('search-input');
+  const acBox = document.getElementById('autocomplete');
+  let acTimeout;
+
+  // ── Autocomplete
+  input.addEventListener('input', () => {
+    clearTimeout(acTimeout);
+    const q = input.value.trim();
+    if (q.length < 2) { acBox.classList.remove('show'); return; }
+    acTimeout = setTimeout(() => {
+      fetch(`/search?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(titles => {
+          if (!titles.length) { acBox.classList.remove('show'); return; }
+          acBox.innerHTML = titles.map(t =>
+            `<div class="ac-item" onclick="selectTitle('${t.replace(/'/g, "\\'")}')">${t}</div>`
+          ).join('');
+          acBox.classList.add('show');
+        });
+    }, 200);
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) acBox.classList.remove('show');
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') getRecommendations();
+  });
+
+  function selectTitle(title) {
+    input.value = title;
+    acBox.classList.remove('show');
+    getRecommendations(title);
+  }
+
+  // ── Recommendations
+  function getRecommendations(titleOverride) {
+    const title = titleOverride || input.value.trim();
+    if (!title) return;
+
+    input.value = title;
+    acBox.classList.remove('show');
+
+    const resultsSection = document.getElementById('results-section');
+    const resultsGrid = document.getElementById('results-grid');
+    const queryLabel = document.getElementById('query-label');
+
+    resultsSection.classList.add('show');
+    resultsGrid.innerHTML = '<div class="loading">Finding similar movies</div>';
+    queryLabel.textContent = `"${title}"`;
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    fetch('/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        resultsGrid.innerHTML = `<div class="error-msg">❌ ${data.error}</div>`;
+        return;
+      }
+      resultsGrid.innerHTML = data.recommendations.map(m => movieCard(m, true)).join('');
+    })
+    .catch(() => {
+      resultsGrid.innerHTML = '<div class="error-msg">Something went wrong. Please try again.</div>';
+    });
+  }
+
+  function clearResults() {
+    document.getElementById('results-section').classList.remove('show');
+    input.value = '';
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  }
+
+  // ── Genre filter
+  function filterGenre(genre, el) {
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+
+    const grid = document.getElementById('top-grid');
+    const title = document.getElementById('top-section-title');
+    grid.innerHTML = '<div class="loading">Loading</div>';
+    title.textContent = genre;
+
+    fetch(`/genre/${encodeURIComponent(genre)}`)
+      .then(r => r.json())
+      .then(data => {
+        grid.innerHTML = data.movies.map(m => movieCard(m)).join('');
+      });
+  }
+
+  // ── Card template
+  function movieCard(m, showBadge = false) {
+    const poster = m.poster_url
+      ? `<img class="movie-poster" src="${m.poster_url}" alt="${m.title}" loading="lazy"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+         <div class="no-poster" style="display:none;">🎬</div>`
+      : `<div class="no-poster">🎬</div>`;
+
+    const badge = (showBadge && m.score)
+      ? `<div class="match-badge">${m.score}%</div>` : '';
+
+    return `
+      <div class="movie-card" onclick="getRecommendations('${m.title.replace(/'/g, "\\'")}')">
+        ${poster}
+        ${badge}
+        <div class="movie-info">
+          <div class="movie-title">${m.title}</div>
+          <div class="movie-meta">
+            <span>${m.release_year}</span>
+            <span class="movie-rating">★ ${m.vote_average}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+</script>
+</body>
+</html>
