@@ -156,7 +156,7 @@
       transition: all 0.2s;
     }
     .pill:hover, .pill.active { border-color: var(--accent); color: var(--accent); background: rgba(232,184,75,0.08); }
-
+    
     /* ── SECTION ── */
     .section { padding: 0 48px 60px; }
     .section-title {
@@ -450,7 +450,11 @@
     fetch('/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title })
+      body: JSON.stringify({
+        title,
+        language: document.getElementById('lang-filter').value,
+        min_votes: parseInt(document.getElementById('vote-slider').value)
+      })
     })
     .then(r => r.json())
     .then(data => {
@@ -464,6 +468,9 @@
       resultsGrid.innerHTML = '<div class="error-msg">Something went wrong. Please try again.</div>';
     });
   }
+  document.getElementById('vote-slider').addEventListener('input', function() {
+    document.getElementById('vote-label').textContent = this.value;
+  });
 
   function clearResults() {
     document.getElementById('results-section').classList.remove('show');
@@ -506,9 +513,13 @@
         <div class="movie-info">
           <div class="movie-title">${m.title}</div>
           <div class="movie-meta">
-            <span>${m.release_year}</span>
+            <span>${m.release_year} · ${m.language || ''}</span>
             <span class="movie-rating">★ ${m.vote_average}</span>
           </div>
+          ${(m.budget && m.budget !== 'N/A') || (m.revenue && m.revenue !== 'N/A') ? 
+            `<div style="font-size:0.72rem; color:var(--muted); margin-top:4px;">
+              💰 ${m.budget || 'N/A'} · 🎟 ${m.revenue || 'N/A'}
+            </div>` : ''}
         </div>
       </div>`;
   }

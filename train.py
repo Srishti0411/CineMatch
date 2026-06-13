@@ -72,7 +72,8 @@ def preprocess(movies, credits):
 
     # Select useful columns
     df = df[["movie_id", "title", "overview", "genres", "keywords",
-         "cast", "crew", "vote_average", "vote_count", "release_date"]].copy()
+         "cast", "crew", "vote_average", "vote_count", "release_date",
+         "original_language", "budget", "revenue"]].copy()
     df["poster_path"] = ""
     df.dropna(inplace=True)
 
@@ -122,9 +123,17 @@ def build_content_model(df):
 def save_artifacts(df, similarity):
     # Save the movie dataframe (without heavy columns)
     movie_list = df[["movie_id", "title", "vote_average",
-                      "vote_count", "release_date", "poster_path", "genres"]].copy()
+                      "vote_count", "release_date", "poster_path", "genres",
+                      "original_language", "budget", "revenue"]].copy()
     movie_list["genres"] = movie_list["genres"].apply(
         lambda x: x if isinstance(x, list) else []
+    )
+    # Bayesian weighted rating
+    C = movie_list["vote_average"].mean()
+    m = 100
+    movie_list["weighted_rating"] = (
+        (movie_list["vote_count"] / (movie_list["vote_count"] + m)) * movie_list["vote_average"]
+        + (m / (movie_list["vote_count"] + m)) * C
     )
 
     movie_list.to_pickle(os.path.join(MODEL_DIR, "movies.pkl"))

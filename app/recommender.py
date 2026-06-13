@@ -47,18 +47,21 @@ class MovieRecommender:
         """Return top-n movies similar to the given title."""
         self.load()
 
-        if title not in self.title_index:
+        # case-insensitive lookup
+        title_lower = {k.lower(): k for k in self.title_index}
+        matched = title_lower.get(title.strip().lower())
+        if not matched:
             return []
 
-        idx = self.title_index[title]
+        idx = self.title_index[matched]
         distances = list(enumerate(self.similarity[idx]))
         distances = sorted(distances, key=lambda x: x[1], reverse=True)
-        # Skip index 0 (itself)
-        top_indices = [i for i, _ in distances[1: n + 1]]
 
-        results = self.movies.iloc[top_indices].copy()
-        results["score"] = [round(distances[i][1] * 100, 1) for i in range(1, n + 1)]
-        return self._format_results(results)
+        distances = sorted(distances, key=lambda x: x[1], reverse=True)
+        top_indices = [i for i, _ in distances[1: n + 1]]
+        df = self.movies.iloc[top_indices].copy()
+        df["score"] = [round(distances[i][1] * 100, 1) for i in range(1, n + 1)]
+        return self._format_results(df)
 
     # ─────────────────────────────────────────
     # Popular / Top Rated (fallback)
@@ -119,15 +122,36 @@ class MovieRecommender:
     # ─────────────────────────────────────────
 
     def _format_results(self, df):
+        def fmt_money(val):
+            try:
+                val = int(val)
+                if val > 0:
+                    return f"${val/1_000_000:.1f}M" if val >= 1_000_000 else f"${val:,}"
+            except Exception:
+                pass
+            return "N/A"
+
+        LANGUAGES = {
+            "en": "English", "fr": "French", "es": "Spanish",
+            "zh": "Chinese", "de": "German", "ja": "Japanese",
+            "ko": "Korean", "hi": "Hindi", "it": "Italian",
+        }
+
         results = []
         for _, row in df.iterrows():
+            lang_code = row.get("original_language", "en")
             results.append({
                 "title": row["title"],
                 "vote_average": round(float(row["vote_average"]), 1),
+                "vote_count": int(row.get("vote_count", 0)),
+                "weighted_rating": round(float(row.get("weighted_rating", 0)), 2),
                 "release_year": str(row["release_date"])[:4] if pd.notna(row["release_date"]) else "N/A",
                 "genres": row["genres"] if isinstance(row["genres"], list) else [],
                 "score": float(row.get("score", 0)),
                 "poster_path": row.get("poster_path", ""),
+                "language": LANGUAGES.get(lang_code, lang_code.upper()),
+                "budget": fmt_money(row.get("budget", 0)),
+                "revenue": fmt_money(row.get("revenue", 0)),
             })
         return results
 

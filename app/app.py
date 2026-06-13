@@ -4,6 +4,8 @@ app.py
 Flask web application for the Movie Recommender.
 """
 
+from streamlit import title
+
 from flask import Flask, render_template, request, jsonify
 from recommender import recommender
 
@@ -37,10 +39,8 @@ def recommend():
     title = data.get("title", "").strip()
     if not title:
         return jsonify({"error": "No title provided"}), 400
-
-    results = recommender.content_recommend(title, n=10)
-    if not results:
-        return jsonify({"error": f"Movie '{title}' not found in database"}), 404
+        results = recommender.content_recommend(title, n=12)
+        return jsonify({"error": f"Movie '{title}' not found or no results match your filters"}), 404
 
     return jsonify({"recommendations": add_poster_url(results), "query": title})
 
